@@ -1,0 +1,40 @@
+{
+  "name": "environment-research-backend",
+  "version": "1.0.0",
+  "description": "后端API服务用于环境研究课题组网站",
+  "main": "app.js",
+  "scripts": {
+    "start": "node app.js",
+    "dev": "nodemon app.js",
+    "test": "node test-api.js",
+    "test:watch": "nodemon test-api.js",
+    "create:admin": "node scripts/create-admin.js",
+    "create:admins": "node scripts/create-admins-batch.js",
+    "init:sql": "node scripts/init-sql.js"
+  },
+  "keywords": ["environment", "research", "api", "authentication"],
+  "author": "南京信息工程大学环境科学与工程学院",
+  "license": "MIT",
+  "dependencies": {
+    "express": "^4.18.2",
+    "mongoose": "^7.5.0",
+    "mysql2": "^3.11.5",
+    "bcryptjs": "^2.4.3",
+    "jsonwebtoken": "^9.0.2",
+    "cors": "^2.8.5",
+    "helmet": "^7.0.0",
+    "express-rate-limit": "^6.10.0",
+    "express-validator": "^7.0.1",
+    "dotenv": "^16.3.1",
+    "nodemailer": "^6.9.13",
+    "compression": "^1.7.4",
+    "morgan": "^1.10.0",
+    "archiver": "^6.0.1"
+  },
+  "devDependencies": {
+    "nodemon": "^3.0.1"
+  },
+  "engines": {
+    "node": ">=16.0.0"
+  }
+}
