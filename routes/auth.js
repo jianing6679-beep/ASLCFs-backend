@@ -4,7 +4,7 @@ const crypto = require('crypto');
 const User = require('../models/User');
 const { AUTH_COOKIE_NAME, auth } = require('../middleware/auth');
 const { checkIpBlock, recordIpFail, resetIpFail } = require('../middleware/risk');
-const { sendMail } = require('../config/mailer');
+const { isMailerConfigured, sendMail } = require('../config/mailer');
 const { isWhitelistedEmail } = require('../config/whitelist');
 const {
   validateRegister,
@@ -37,6 +37,16 @@ const getVerifyLink = (token) => {
 const getPasswordResetLink = (token) => {
   const frontendBase = process.env.FRONTEND_URL || 'http://localhost:3000';
   return `${frontendBase.replace(/\/$/, '')}/reset-password.html?token=${token}`;
+};
+
+const requireMailerForProduction = (res) => {
+  if (process.env.NODE_ENV === 'production' && !isMailerConfigured()) {
+    res.status(503).json({
+      error: '邮件服务暂未配置，暂时无法完成注册或邮箱验证。请联系管理员。'
+    });
+    return false;
+  }
+  return true;
 };
 
 const isStrongPassword = (value = '') => {
@@ -82,6 +92,8 @@ const clearAuthCookie = (res) => {
 // @access  Public
 router.post('/register', checkIpBlock, validateRegister, async (req, res) => {
   try {
+    if (!requireMailerForProduction(res)) return;
+
     const { username, email, password, profile = {} } = req.body;
 
     // 检查用户名是否已存在
@@ -234,6 +246,45 @@ router.post('/login', checkIpBlock, validateLogin, async (req, res) => {
     res.status(statusCode).json({
       error: errorMessage
     });
+  }
+});
+
+// @route   POST /api/auth/resend-verification
+// @desc    Resend email verification link
+// @access  Public
+router.post('/resend-verification', checkIpBlock, async (req, res) => {
+  try {
+    if (!requireMailerForProduction(res)) return;
+
+    const email = String(req.body.email || '').trim().toLowerCase();
+    if (!email) {
+      return res.status(400).json({ error: '请填写注册邮箱。' });
+    }
+
+    const user = await User.findOne({ email });
+    const genericMessage = '如果该邮箱已注册且尚未验证，系统将重新发送验证邮件。';
+
+    if (!user || user.emailVerified) {
+      return res.json({ message: genericMessage });
+    }
+
+    const { rawToken, tokenHash, expiresAt } = createVerifyToken();
+    user.emailVerifyToken = tokenHash;
+    user.emailVerifyExpires = expiresAt;
+    await user.save();
+
+    const verifyLink = getVerifyLink(rawToken);
+    await sendMail({
+      to: user.email,
+      subject: '请验证您的邮箱',
+      text: `请点击以下链接验证邮箱：${verifyLink}`,
+      html: `<p>请点击以下链接验证邮箱：</p><p><a href="${verifyLink}">${verifyLink}</a></p>`
+    });
+
+    res.json({ message: genericMessage });
+  } catch (error) {
+    console.error('Resend verification error:', error);
+    res.status(500).json({ error: '重新发送验证邮件失败，请稍后重试。' });
   }
 });
 

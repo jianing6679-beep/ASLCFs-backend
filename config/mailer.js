@@ -2,13 +2,22 @@ const nodemailer = require('nodemailer');
 
 let cachedTransporter = null;
 
+const getMailerConfig = () => ({
+  host: process.env.SMTP_HOST,
+  port: Number(process.env.SMTP_PORT || 0),
+  user: process.env.SMTP_USER,
+  pass: process.env.SMTP_PASS
+});
+
+const isMailerConfigured = () => {
+  const { host, port, user, pass } = getMailerConfig();
+  return Boolean(host && port && user && pass);
+};
+
 const getTransporter = () => {
   if (cachedTransporter) return cachedTransporter;
 
-  const host = process.env.SMTP_HOST;
-  const port = Number(process.env.SMTP_PORT || 0);
-  const user = process.env.SMTP_USER;
-  const pass = process.env.SMTP_PASS;
+  const { host, port, user, pass } = getMailerConfig();
 
   if (!host || !port || !user || !pass) {
     return null;
@@ -35,4 +44,4 @@ const sendMail = async ({ to, subject, html, text }) => {
   return transporter.sendMail({ from, to, subject, html, text });
 };
 
-module.exports = { sendMail };
+module.exports = { isMailerConfigured, sendMail };
