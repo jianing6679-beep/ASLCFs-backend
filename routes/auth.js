@@ -39,8 +39,12 @@ const getPasswordResetLink = (token) => {
   return `${frontendBase.replace(/\/$/, '')}/reset-password.html?token=${token}`;
 };
 
+const requiresEmailVerification = () => {
+  return String(process.env.REQUIRE_EMAIL_VERIFICATION || '').toLowerCase() === 'true';
+};
+
 const requireMailerForProduction = (res) => {
-  if (process.env.NODE_ENV === 'production' && !isMailerConfigured()) {
+  if (process.env.NODE_ENV === 'production' && requiresEmailVerification() && !isMailerConfigured()) {
     res.status(503).json({
       error: '邮件服务暂未配置，暂时无法完成注册或邮箱验证。请联系管理员。'
     });
@@ -88,7 +92,7 @@ const clearAuthCookie = (res) => {
 
 
 // @route   POST /api/auth/register
-// @desc    注册新用户
+// @desc    Register a new user
 // @access  Public
 router.post('/register', checkIpBlock, validateRegister, async (req, res) => {
   try {
@@ -96,26 +100,20 @@ router.post('/register', checkIpBlock, validateRegister, async (req, res) => {
 
     const { username, email, password, profile = {} } = req.body;
 
-    // 检查用户名是否已存在
     const existingUsername = await User.findOne({ username });
     if (existingUsername) {
-      return res.status(400).json({
-        error: '用户名已被使用'
-      });
+      return res.status(400).json({ error: 'Username is already in use.' });
     }
 
-    // 检查邮箱是否已存在
     const existingEmail = await User.findOne({ email });
     if (existingEmail) {
-      return res.status(400).json({
-        error: '邮箱已被注册'
-      });
+      return res.status(400).json({ error: 'Email is already registered.' });
     }
 
     const approvedByWhitelist = isWhitelistedEmail(email);
-    const { rawToken, tokenHash, expiresAt } = createVerifyToken();
+    const shouldVerifyEmail = requiresEmailVerification();
+    const verifyToken = shouldVerifyEmail ? createVerifyToken() : null;
 
-    // 创建新用户
     const user = new User({
       username,
       email,
@@ -123,29 +121,32 @@ router.post('/register', checkIpBlock, validateRegister, async (req, res) => {
       profile,
       status: approvedByWhitelist ? 'approved' : 'pending',
       isActive: approvedByWhitelist,
-      emailVerified: false,
-      emailVerifyToken: tokenHash,
-      emailVerifyExpires: expiresAt
+      emailVerified: !shouldVerifyEmail,
+      emailVerifyToken: verifyToken?.tokenHash,
+      emailVerifyExpires: verifyToken?.expiresAt
     });
 
     await user.save();
 
-    const verifyLink = getVerifyLink(rawToken);
-    await sendMail({
-      to: email,
-      subject: '请验证您的邮箱',
-      text: `请点击以下链接验证邮箱：${verifyLink}`,
-      html: `<p>请点击以下链接验证邮箱：</p><p><a href="${verifyLink}">${verifyLink}</a></p>`
-    });
+    if (shouldVerifyEmail) {
+      const verifyLink = getVerifyLink(verifyToken.rawToken);
+      await sendMail({
+        to: email,
+        subject: 'Please verify your email',
+        text: `Please verify your email using this link: ${verifyLink}`,
+        html: `<p>Please verify your email using this link:</p><p><a href="${verifyLink}">${verifyLink}</a></p>`
+      });
+    }
 
     if (!approvedByWhitelist) {
       return res.status(201).json({
-        message: '注册申请已提交，请等待审核并验证邮箱',
+        message: shouldVerifyEmail
+          ? 'Registration submitted. Please wait for approval and verify your email.'
+          : 'Registration submitted. Please wait for administrator approval.',
         status: user.status
       });
     }
 
-    // 生成JWT token
     const token = jwt.sign(
       {
         userId: user._id,
@@ -157,9 +158,8 @@ router.post('/register', checkIpBlock, validateRegister, async (req, res) => {
     );
     setAuthCookie(res, token);
 
-    // 返回用户信息（不包含密码）
     res.status(201).json({
-      message: '注册成功',
+      message: 'Registration successful.',
       token,
       user: {
         id: user._id,
@@ -170,12 +170,9 @@ router.post('/register', checkIpBlock, validateRegister, async (req, res) => {
         createdAt: user.createdAt
       }
     });
-
   } catch (error) {
-    console.error('注册错误:', error);
-    res.status(500).json({
-      error: '注册失败，请稍后重试'
-    });
+    console.error('Register error:', error);
+    res.status(500).json({ error: 'Registration failed. Please try again later.' });
   }
 });
 
@@ -254,15 +251,19 @@ router.post('/login', checkIpBlock, validateLogin, async (req, res) => {
 // @access  Public
 router.post('/resend-verification', checkIpBlock, async (req, res) => {
   try {
+    if (!requiresEmailVerification()) {
+      return res.json({ message: 'Email verification is disabled. Approved users can sign in directly.' });
+    }
+
     if (!requireMailerForProduction(res)) return;
 
     const email = String(req.body.email || '').trim().toLowerCase();
     if (!email) {
-      return res.status(400).json({ error: '请填写注册邮箱。' });
+      return res.status(400).json({ error: 'Email is required.' });
     }
 
     const user = await User.findOne({ email });
-    const genericMessage = '如果该邮箱已注册且尚未验证，系统将重新发送验证邮件。';
+    const genericMessage = 'If this email is registered and unverified, a verification email will be sent.';
 
     if (!user || user.emailVerified) {
       return res.json({ message: genericMessage });
@@ -276,15 +277,15 @@ router.post('/resend-verification', checkIpBlock, async (req, res) => {
     const verifyLink = getVerifyLink(rawToken);
     await sendMail({
       to: user.email,
-      subject: '请验证您的邮箱',
-      text: `请点击以下链接验证邮箱：${verifyLink}`,
-      html: `<p>请点击以下链接验证邮箱：</p><p><a href="${verifyLink}">${verifyLink}</a></p>`
+      subject: 'Please verify your email',
+      text: `Please verify your email using this link: ${verifyLink}`,
+      html: `<p>Please verify your email using this link:</p><p><a href="${verifyLink}">${verifyLink}</a></p>`
     });
 
     res.json({ message: genericMessage });
   } catch (error) {
     console.error('Resend verification error:', error);
-    res.status(500).json({ error: '重新发送验证邮件失败，请稍后重试。' });
+    res.status(500).json({ error: 'Unable to resend verification email. Please try again later.' });
   }
 });
 

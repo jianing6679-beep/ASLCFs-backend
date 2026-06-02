@@ -216,7 +216,8 @@ userSchema.statics.findByCredentials = function(username, password) {
         throw new Error('账号已被禁用');
       }
 
-      if (user.emailVerified === false) {
+      const shouldVerifyEmail = String(process.env.REQUIRE_EMAIL_VERIFICATION || '').toLowerCase() === 'true';
+      if (shouldVerifyEmail && user.emailVerified === false) {
         throw new Error('邮箱未验证');
       }
 
