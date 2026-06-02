@@ -19,8 +19,12 @@ const toOrigin = (value) => {
 
 const frontendOrigin = toOrigin(process.env.FRONTEND_URL);
 const backendOrigin = toOrigin(process.env.BACKEND_URL);
-const connectSources = ["'self'", ...[frontendOrigin, backendOrigin].filter(Boolean)];
-const allowedCorsOrigins = new Set([frontendOrigin, backendOrigin].filter(Boolean));
+const staticAllowedOrigins = [
+  'https://aslcfs.github.io',
+  'https://jianing6679-beep.github.io'
+];
+const connectSources = ["'self'", ...[frontendOrigin, backendOrigin, ...staticAllowedOrigins].filter(Boolean)];
+const allowedCorsOrigins = new Set([frontendOrigin, backendOrigin, ...staticAllowedOrigins].filter(Boolean));
 const isDevelopment = process.env.NODE_ENV === 'development';
 
 const REQUIRED_ENV = {
