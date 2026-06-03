@@ -11,6 +11,8 @@ const agricultureRoot = path.join(dataRoot, '\u519c\u4e1a\u6392\u653e\u6e05\u535
 const otherEmissionRoot = path.join(dataRoot, '\u5176\u4ed6\u6392\u653e\u6e05\u5355');
 const ALLOWED_POLLUTANTS = new Set(['NH3', 'CH4', 'NOx', 'HONO']);
 const ALLOWED_PASSENGER_CAR_POLLUTANTS = new Set(['CO', 'NH3', 'NOx', 'PM', 'VOC']);
+const EXPRESS_DELIVERY_ZENODO_URL = 'https://zenodo.org/records/20528292/files/%E5%BF%AB%E9%80%92%E4%B8%9A%E9%81%93%E8%B7%AF%E5%B0%BA%E5%BA%A6%E6%8E%92%E6%94%BE%E6%B8%85%E5%8D%95.zip?download=1';
+const EXPRESS_DELIVERY_ZIP_FILENAME = '\u5feb\u9012\u4e1a\u9053\u8def\u5c3a\u5ea6\u6392\u653e\u6e05\u5355.zip';
 const ALLOWED_YEARS = new Set(Array.from({ length: 24 }, (_, index) => String(2000 + index)));
 const CATEGORY_TIME = '\u65f6\u95f4';
 const CATEGORY_SPECIES = '\u7269\u79cd';
@@ -354,6 +356,40 @@ router.post('/other/batch', auth, async (req, res) => {
 
     if (datasetKey !== 'other_emission' || datasetName !== '\u5176\u4ed6\u6392\u653e\u6e05\u5355') {
       return res.status(400).json({ error: 'Invalid dataset parameters.' });
+    }
+
+    if (mainCategory === '\u5feb\u9012\u4e1a\u9053\u8def\u5c3a\u5ea6\u6392\u653e\u6e05\u5355') {
+      await createDownloadHistory(req, {
+        dataType: 'emission',
+        dataTypeLabel: 'Emission data',
+        datasetKey: 'other_emission',
+        datasetName: '\u5176\u4ed6\u6392\u653e\u6e05\u5355',
+        downloadType: 'single',
+        filename: EXPRESS_DELIVERY_ZIP_FILENAME,
+        filePath: EXPRESS_DELIVERY_ZENODO_URL,
+        fileCount: 1,
+        fileSize: 0,
+        mainCategory,
+        sector: '\u5feb\u9012\u4e1a',
+        category: '\u9053\u8def\u5c3a\u5ea6\u6392\u653e\u6e05\u5355',
+        subject: '\u5feb\u9012\u4e1a',
+        scale: 'zip',
+        filters: {
+          datasetKey,
+          datasetName,
+          mainCategory,
+          subject: '\u5feb\u9012\u4e1a',
+          scale: 'zip',
+          zenodoUrl: EXPRESS_DELIVERY_ZENODO_URL,
+          source: 'zenodo'
+        }
+      });
+
+      return res.json({
+        message: 'Zenodo download request recorded.',
+        filename: EXPRESS_DELIVERY_ZIP_FILENAME,
+        zenodoUrl: EXPRESS_DELIVERY_ZENODO_URL
+      });
     }
 
     if (mainCategory !== '\u4e58\u7528\u8f66\u6392\u653e\u6e05\u5355' || subject !== '\u4e58\u7528\u8f66') {
