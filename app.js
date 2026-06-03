@@ -64,6 +64,7 @@ const adminRoutes = require('./routes/admin');
 const announcementRoutes = require('./routes/announcements');
 const inventoryRoutes = require('./routes/inventories');
 const downloadsRoutes = require('./routes/downloads');
+const visitRoutes = require('./routes/visits');
 
 const app = express();
 
@@ -168,6 +169,7 @@ app.use('/api/admin', adminRoutes);
 app.use('/api/announcements', announcementRoutes);
 app.use('/api/inventories', inventoryRoutes);
 app.use('/api/downloads', downloadsRoutes);
+app.use('/api/analytics', visitRoutes);
 
 app.get('/api/health', (req, res) => {
   res.status(200).json({
