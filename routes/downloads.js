@@ -594,6 +594,56 @@ router.post('/emission/batch', auth, async (req, res) => {
   }
 });
 
+router.post('/zenodo-request', auth, async (req, res) => {
+  try {
+    const filename = path.basename(String(req.body?.filename || ''));
+    const zenodoUrl = String(req.body?.zenodoUrl || '').trim();
+    const filters = req.body?.filters && typeof req.body.filters === 'object'
+      ? req.body.filters
+      : {};
+
+    if (!filename || !/\.tiff?$/i.test(filename)) {
+      return res.status(400).json({ error: 'Invalid filename.' });
+    }
+
+    if (!/^https:\/\/zenodo\.org\/records\/\d+\/files\/.+/i.test(zenodoUrl)) {
+      return res.status(400).json({ error: 'Invalid Zenodo URL.' });
+    }
+
+    await createDownloadHistory(req, {
+      dataType: 'emission',
+      dataTypeLabel: 'Emission data',
+      datasetKey: 'agriculture_emission',
+      datasetName: '\u519c\u4e1a\u6392\u653e\u6e05\u5355',
+      downloadType: 'single',
+      filename,
+      filePath: zenodoUrl,
+      fileCount: Number(req.body?.fileCount || 1),
+      fileSize: 0,
+      year: String(req.body?.year || filters.year || ''),
+      mainCategory: String(req.body?.mainCategory || filters.mainCategory || ''),
+      sector: String(req.body?.sector || filters.sector || ''),
+      category: String(req.body?.category || filters.category || ''),
+      subject: String(req.body?.subject || filters.subject || ''),
+      scale: String(req.body?.scale || filters.scale || ''),
+      filters: {
+        ...filters,
+        zenodoUrl,
+        source: 'zenodo'
+      }
+    });
+
+    res.json({
+      message: 'Zenodo download request recorded.',
+      filename,
+      zenodoUrl
+    });
+  } catch (error) {
+    console.error('Zenodo download request error:', error);
+    res.status(500).json({ error: 'Failed to record Zenodo download request.' });
+  }
+});
+
 async function collectMatchingFiles({ directoryPath, year, pollutant, category, subjects, scale }) {
   const entries = await fs.readdir(directoryPath, { withFileTypes: true });
   const files = [];
