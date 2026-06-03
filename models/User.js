@@ -61,6 +61,11 @@ const userSchema = new mongoose.Schema({
         message: '职称不在允许范围内'
       }
     },
+    advisor: {
+      type: String,
+      trim: true,
+      maxlength: [100, 'Advisor name cannot exceed 100 characters.']
+    },
     department: {
       type: String,
       trim: true,
@@ -149,6 +154,21 @@ userSchema.virtual('fullName').get(function() {
 userSchema.index({ email: 1 });
 userSchema.index({ username: 1 });
 userSchema.index({ createdAt: -1 });
+
+userSchema.path('username').validators = userSchema.path('username').validators.filter((validator) => (
+  !['regexp', 'minlength', 'maxlength'].includes(validator.type)
+));
+userSchema.path('username').validate(
+  value => {
+    const length = String(value || '').trim().length;
+    return length >= 2 && length <= 50;
+  },
+  'Real name must be between 2 and 50 characters.'
+);
+userSchema.path('username').validate(
+  value => /^[\u4e00-\u9fa5a-zA-Z .·-]+$/.test(String(value || '')),
+  'Username must be a real Chinese or English name.'
+);
 
 userSchema.pre('save', async function(next) {
   if (!this.isModified('password')) return next();

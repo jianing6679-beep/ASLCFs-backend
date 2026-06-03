@@ -30,6 +30,9 @@ const TITLE_OPTIONS = [
   'other'
 ];
 
+const ADVISOR_REQUIRED_TITLES = ['undergraduate', 'master', 'doctoral', 'postdoc'];
+const REAL_NAME_PATTERN = /^[\u4e00-\u9fa5a-zA-Z .·-]+$/;
+
 const handleValidationErrors = (req, res, next) => {
   const errors = validationResult(req);
   if (!errors.isEmpty()) {
@@ -54,10 +57,10 @@ const isEducationalEmail = (email = '') => {
 const validateRegister = [
   body('username')
     .trim()
-    .isLength({ min: 3, max: 50 })
-    .withMessage('Username must be between 3 and 50 characters.')
-    .matches(/^[a-zA-Z0-9_]+$/)
-    .withMessage('Username can contain only letters, numbers, and underscores.')
+    .isLength({ min: 2, max: 50 })
+    .withMessage('Real name must be between 2 and 50 characters.')
+    .matches(REAL_NAME_PATTERN)
+    .withMessage('Please use a real Chinese or English name.')
     .escape(),
 
   body('email')
@@ -116,6 +119,24 @@ const validateRegister = [
     .isIn(TITLE_OPTIONS)
     .withMessage('Invalid title option.'),
 
+  body('profile.advisor')
+    .custom((value, { req }) => {
+      const title = req.body?.profile?.title;
+      if (ADVISOR_REQUIRED_TITLES.includes(title) && !String(value || '').trim()) {
+        throw new Error('Advisor name is required for students and postdoctoral users.');
+      }
+      return true;
+    }),
+
+  body('profile.advisor')
+    .optional({ values: 'falsy' })
+    .trim()
+    .isLength({ min: 2, max: 100 })
+    .withMessage('Advisor name must be between 2 and 100 characters.')
+    .matches(REAL_NAME_PATTERN)
+    .withMessage('Please use a real Chinese or English advisor name.')
+    .escape(),
+
   body('profile.department')
     .optional()
     .trim()
@@ -173,6 +194,15 @@ const validateProfileUpdate = [
     .trim()
     .isIn(TITLE_OPTIONS)
     .withMessage('Invalid title option.'),
+
+  body('profile.advisor')
+    .optional({ values: 'falsy' })
+    .trim()
+    .isLength({ min: 2, max: 100 })
+    .withMessage('Advisor name must be between 2 and 100 characters.')
+    .matches(REAL_NAME_PATTERN)
+    .withMessage('Please use a real Chinese or English advisor name.')
+    .escape(),
 
   body('profile.department')
     .optional()

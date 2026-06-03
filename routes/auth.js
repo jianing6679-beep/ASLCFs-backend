@@ -445,6 +445,7 @@ router.put('/profile', auth, validateProfileUpdate, async (req, res) => {
       'profile.lastName',
       'profile.institution',
       'profile.title',
+      'profile.advisor',
       'profile.department',
       'profile.researchInterests'
     ];

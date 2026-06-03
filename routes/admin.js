@@ -433,9 +433,10 @@ router.get('/download-user-stats', auth, adminAuth, async (req, res) => {
           JSON_UNQUOTE(JSON_EXTRACT(u.profile, '$.firstName')) LIKE ? OR
           JSON_UNQUOTE(JSON_EXTRACT(u.profile, '$.lastName')) LIKE ? OR
           JSON_UNQUOTE(JSON_EXTRACT(u.profile, '$.institution')) LIKE ? OR
-          JSON_UNQUOTE(JSON_EXTRACT(u.profile, '$.title')) LIKE ?
+          JSON_UNQUOTE(JSON_EXTRACT(u.profile, '$.title')) LIKE ? OR
+          JSON_UNQUOTE(JSON_EXTRACT(u.profile, '$.advisor')) LIKE ?
         )`);
-        params.push(like, like, like, like, like, like, like);
+        params.push(like, like, like, like, like, like, like, like);
       }
 
       const whereSql = where.length ? `WHERE ${where.join(' AND ')}` : '';
@@ -456,6 +457,7 @@ router.get('/download-user-stats', auth, adminAuth, async (req, res) => {
           JSON_UNQUOTE(JSON_EXTRACT(u.profile, '$.lastName')) AS lastName,
           JSON_UNQUOTE(JSON_EXTRACT(u.profile, '$.institution')) AS institution,
           JSON_UNQUOTE(JSON_EXTRACT(u.profile, '$.title')) AS title,
+          JSON_UNQUOTE(JSON_EXTRACT(u.profile, '$.advisor')) AS advisor,
           COUNT(d._id) AS downloadCount,
           COALESCE(SUM(d.fileCount), 0) AS fileCount,
           GROUP_CONCAT(DISTINCT NULLIF(d.datasetName, '') ORDER BY d.datasetName SEPARATOR ', ') AS datasets,
@@ -472,6 +474,7 @@ router.get('/download-user-stats', auth, adminAuth, async (req, res) => {
         name: [row.firstName, row.lastName].filter(Boolean).join(' ') || row.username || '',
         institution: row.institution || '',
         title: row.title || '',
+        advisor: row.advisor || '',
         downloadCount: Number(row.downloadCount || 0),
         fileCount: Number(row.fileCount || 0),
         datasets: row.datasets ? String(row.datasets).split(', ').filter(Boolean) : [],
@@ -512,6 +515,7 @@ router.get('/download-user-stats', auth, adminAuth, async (req, res) => {
         name: [profile.firstName, profile.lastName].filter(Boolean).join(' ') || user.username || item.username || '',
         institution: profile.institution || '',
         title: profile.title || '',
+        advisor: profile.advisor || '',
         downloadCount: 0,
         fileCount: 0,
         datasets: new Set(),
@@ -539,6 +543,7 @@ router.get('/download-user-stats', auth, adminAuth, async (req, res) => {
         item.email,
         item.institution,
         item.title,
+        item.advisor,
         item.datasets.join(' ')
       ].join(' ').toLowerCase().includes(lower));
     }
