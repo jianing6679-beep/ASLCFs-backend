@@ -662,6 +662,7 @@ router.post('/zenodo-request', auth, async (req, res) => {
       category: String(req.body?.category || filters.category || ''),
       subject: String(req.body?.subject || filters.subject || ''),
       scale: String(req.body?.scale || filters.scale || ''),
+      period: String(req.body?.period || filters.period || ''),
       filters: {
         ...filters,
         zenodoUrl,
