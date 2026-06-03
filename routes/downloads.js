@@ -602,7 +602,7 @@ router.post('/zenodo-request', auth, async (req, res) => {
       ? req.body.filters
       : {};
 
-    if (!filename || !/\.tiff?$/i.test(filename)) {
+    if (!filename || !/\.(tiff?|zip)$/i.test(filename)) {
       return res.status(400).json({ error: 'Invalid filename.' });
     }
 
@@ -613,8 +613,8 @@ router.post('/zenodo-request', auth, async (req, res) => {
     await createDownloadHistory(req, {
       dataType: 'emission',
       dataTypeLabel: 'Emission data',
-      datasetKey: 'agriculture_emission',
-      datasetName: '\u519c\u4e1a\u6392\u653e\u6e05\u5355',
+      datasetKey: String(req.body?.datasetKey || filters.datasetKey || 'agriculture_emission'),
+      datasetName: String(req.body?.datasetName || filters.datasetName || '\u519c\u4e1a\u6392\u653e\u6e05\u5355'),
       downloadType: 'single',
       filename,
       filePath: zenodoUrl,
