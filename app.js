@@ -26,6 +26,26 @@ const staticAllowedOrigins = [
 const connectSources = ["'self'", ...[frontendOrigin, backendOrigin, ...staticAllowedOrigins].filter(Boolean)];
 const allowedCorsOrigins = new Set([frontendOrigin, backendOrigin, ...staticAllowedOrigins].filter(Boolean));
 const isDevelopment = process.env.NODE_ENV === 'development';
+const allowedCorsHostnames = new Set(['aslcfs.github.io', 'jianing6679-beep.github.io']);
+
+const isAllowedCorsOrigin = (origin) => {
+  if (!origin) return isDevelopment ? true : frontendOrigin;
+  if (isDevelopment && origin === 'null') return origin;
+  if (allowedCorsOrigins.has(origin)) return origin;
+
+  try {
+    const { hostname } = new URL(origin);
+    if (allowedCorsHostnames.has(hostname)) return origin;
+
+    if (isDevelopment && ['localhost', '127.0.0.1', '::1'].includes(hostname)) {
+      return origin;
+    }
+  } catch (error) {
+    return false;
+  }
+
+  return false;
+};
 
 const REQUIRED_ENV = {
   common: ['JWT_SECRET', 'FRONTEND_URL', 'BACKEND_URL'],
@@ -81,30 +101,18 @@ app.use(helmet({
   }
 }));
 
-app.use(cors({
+const corsOptions = {
   origin(origin, callback) {
-    if (!origin) return callback(null, isDevelopment ? true : frontendOrigin);
-    if (isDevelopment && origin === 'null') return callback(null, origin);
-    if (allowedCorsOrigins.has(origin)) return callback(null, origin);
-
-    if (isDevelopment) {
-      try {
-        const { hostname } = new URL(origin);
-        if (['localhost', '127.0.0.1', '::1'].includes(hostname)) {
-          return callback(null, origin);
-        }
-      } catch (error) {
-        return callback(null, false);
-      }
-    }
-
-    return callback(null, false);
+    return callback(null, isAllowedCorsOrigin(origin));
   },
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization'],
   exposedHeaders: ['Content-Disposition', 'X-File-Count']
-}));
+};
+
+app.use(cors(corsOptions));
+app.options('*', cors(corsOptions));
 
 app.use(compression());
 
