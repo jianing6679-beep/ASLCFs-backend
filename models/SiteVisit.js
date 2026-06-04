@@ -25,6 +25,11 @@ const siteVisitSchema = new mongoose.Schema({
     type: String,
     trim: true,
     default: ''
+  },
+  visitorId: {
+    type: String,
+    trim: true,
+    default: ''
   }
 }, {
   timestamps: true
@@ -32,5 +37,6 @@ const siteVisitSchema = new mongoose.Schema({
 
 siteVisitSchema.index({ createdAt: -1 });
 siteVisitSchema.index({ page: 1, createdAt: -1 });
+siteVisitSchema.index({ visitorId: 1, createdAt: -1 });
 
 module.exports = mongoose.model('SiteVisit', siteVisitSchema);
