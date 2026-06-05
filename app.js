@@ -124,7 +124,7 @@ if (process.env.NODE_ENV === 'development') {
 
 const limiter = rateLimit({
   windowMs: (process.env.RATE_LIMIT_WINDOW || 15) * 60 * 1000,
-  max: process.env.RATE_LIMIT_MAX || 300,
+  max: process.env.RATE_LIMIT_MAX || 1000,
   skip: (req) => (
     req.path === '/announcements'
     || req.path === '/analytics/visit-count'
@@ -139,19 +139,40 @@ const limiter = rateLimit({
 });
 app.use('/api/', limiter);
 
-const authLimiter = rateLimit({
+const loginLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
-  max: process.env.AUTH_RATE_LIMIT_MAX || 8,
+  max: process.env.LOGIN_RATE_LIMIT_MAX || process.env.AUTH_RATE_LIMIT_MAX || 100,
   message: {
-    error: '登录尝试过于频繁，请 15 分钟后重试'
+    error: '登录请求过于频繁，请 15 分钟后再试'
   },
   standardHeaders: true,
   legacyHeaders: false
 });
-app.use('/api/auth/login', authLimiter);
-app.use('/api/auth/register', authLimiter);
-app.use('/api/auth/forgot-password', authLimiter);
-app.use('/api/auth/reset-password', authLimiter);
+
+const registerLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: process.env.REGISTER_RATE_LIMIT_MAX || 200,
+  message: {
+    error: '注册请求过于频繁，请 15 分钟后再试'
+  },
+  standardHeaders: true,
+  legacyHeaders: false
+});
+
+const passwordResetLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: process.env.PASSWORD_RESET_RATE_LIMIT_MAX || 30,
+  message: {
+    error: '密码重置请求过于频繁，请 15 分钟后再试'
+  },
+  standardHeaders: true,
+  legacyHeaders: false
+});
+
+app.use('/api/auth/login', loginLimiter);
+app.use('/api/auth/register', registerLimiter);
+app.use('/api/auth/forgot-password', passwordResetLimiter);
+app.use('/api/auth/reset-password', passwordResetLimiter);
 
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
@@ -196,7 +217,7 @@ app.get('/api/health', (req, res) => {
 
 app.get('/api', (req, res) => {
   res.json({
-    message: '环境研究课题组网站 API',
+    message: 'ASLCFs backend API',
     version: '1.0.0',
     endpoints: {
       auth: {
@@ -218,14 +239,14 @@ app.get('/api', (req, res) => {
 
 app.use('/api/*', (req, res) => {
   res.status(404).json({
-    error: 'API 端点不存在',
+    error: 'API endpoint not found',
     path: req.path,
     method: req.method
   });
 });
 
 app.use((err, req, res, next) => {
-  console.error('全局错误:', err);
+  console.error('Global error:', err);
 
   if (err.name === 'ValidationError') {
     const errors = Object.values(err.errors).map(val => val.message);
