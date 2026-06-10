@@ -2,7 +2,7 @@ const express = require('express');
 const SiteVisit = require('../models/SiteVisit');
 
 const router = express.Router();
-const VISIT_BASE_COUNT = 6124;
+const VISIT_BASE_COUNT = 8213;
 const VISIT_DEDUPE_WINDOW_MS = 30 * 60 * 1000;
 
 const getClientIp = (req) => req.headers['x-forwarded-for']?.split(',')[0]?.trim() || req.ip || '';
